@@ -1,0 +1,8 @@
+.env
+eventCodes.json
+exampleGame.json
+exampleGameShifts.json
+exampleGameData.json
+pyscripts/__pycache__
+env
+package-lock.json

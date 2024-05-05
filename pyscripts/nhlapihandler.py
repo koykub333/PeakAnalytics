@@ -223,6 +223,8 @@ def processGame(gameId):
                 gameStats[str(player)]['GA'] = points[player]['GA']
 
     gameData['playerGames'] = gameStats
+    del gameData['plays']
+    
 
     return gameData
 

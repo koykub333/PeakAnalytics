@@ -27,14 +27,15 @@ def main():
     if sys.argv[1] == "updateGame":
         updateGame(int(sys.argv[2]),client)
     elif sys.argv[1] == "updatePlayers":
-        updatePlayers(sys.argv[2],client)
+        updatePlayers(int(sys.argv[2]),client)
     elif sys.argv[1] == "updatePlayerSeason":
-        updatePlayerSeason(sys.argv[2],sys.argv[3],client)
+        updatePlayerSeason(int(sys.argv[2]),int(sys.argv[3]),client)
     elif sys.argv[1] == "updateSeason":
-        updateSeason(sys.argv[2])
+        updateSeason(int(sys.argv[2]),client)
     else:
         print("Invalid function Name")
 
+    client.close()
 
 def get_client():
     load_dotenv()
@@ -53,7 +54,7 @@ def updateGame(gameId,mongoClient):
 
     updatePlayers(gameData,mongoClient)
 
-    db = mongoClient.mydb
+    db = mongoClient.test
     dbgames = db.games
     dbplayerGames = db.playerGames
 
@@ -96,7 +97,7 @@ def updateGame(gameId,mongoClient):
 #   -nothing, but makes sure all players in a game are
 #       present in the db 
 def updatePlayers(gameData,mongoClient):
-    db = mongoClient.mydb
+    db = mongoClient.test
     dbplayers = db.players
 
     for player in gameData['rosterSpots']:
@@ -118,7 +119,7 @@ def updatePlayers(gameData,mongoClient):
 # RETURNS:
 #   -nothing, but sends playerSeason data to db
 def updatePlayerSeason(playerId,year,mongoClient):
-    db = mongoClient.mydb
+    db = mongoClient.test
     #print("Updating player season " + str(playerId))
     #season codes are represented as YYYYyyyy
     #   where YYYY is the year passed to the function
@@ -129,7 +130,7 @@ def updatePlayerSeason(playerId,year,mongoClient):
     games = db.games.find( { 'season': seasonCode } )
     #print("Checking " + len(games)+ " games")
     seasonStats = emptySeasonStats(playerId)
-
+    seasonStats['year'] = year
     if not games:
         return
 
@@ -139,13 +140,13 @@ def updatePlayerSeason(playerId,year,mongoClient):
             #print("Appears in Game " + game['id'])
             seasonStats = addGameToSeasonStats(seasonStats,game['playerGames'][str(playerId)],game)
     
-    db.playerSeasons.insert_one(seasonStats)
+    db.playerseasons.insert_one(seasonStats)
 
 
 
 def addGameToSeasonStats(seasonStats,gameStats,gameData):
     for stat in seasonStats:
-        if stat != 'playerId' and stat != 'gamesPlayed':
+        if stat != 'playerId' and stat != 'gamesPlayed' and stat != 'year':
             seasonStats[stat] += gameStats[stat]
         elif stat == 'gamesPlayed':
             reducedGame = reduceGame(gameData)
@@ -203,7 +204,7 @@ def updateSeason(year,mongoClient):
         #print("Updating game: " + str(game))
         updateGame(game, mongoClient)
 
-    dbplayers = mongoClient.mydb.players
+    dbplayers = mongoClient.test.players
 
     playerList = dbplayers.find()
 

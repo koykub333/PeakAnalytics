@@ -6,7 +6,7 @@ mongoose.Promise = global.Promise;
 
 //mongoose.connect(process.env.DB, { useNewUrlParser: true });
 try {
-    mongoose.connect( process.env.DB, {useNewUrlParser: true, useUnifiedTopology: true}, () =>
+    mongoose.connect( process.env.DB_URL, {useNewUrlParser: true, useUnifiedTopology: true}, () =>
         console.log("connected"));
 }catch (error) {
     console.log("could not connect");
@@ -15,9 +15,20 @@ mongoose.set('useCreateIndex', true);
 
 //game schema
 var PlayerSeasonSchema = new Schema({
-    name: String,
-    username: { type: String, required: true, index: { unique: true }},
-    password: { type: String, required: true, select: false }
+    playerId: Number,
+    year: Number,
+    G: Number,
+    A: Number,
+    P: Number,
+    TOI: Number,
+    CF: Number,
+    CA: Number,
+    FF: Number,
+    FA: Number,
+    PIM: Number,
+    FOW: Number,
+    FOL: Number,
+    gamesPlayed: []
 });
 
 //return the model to server

@@ -10,6 +10,10 @@ var authJwtController = require('./auth_jwt');
 var jwt = require('jsonwebtoken');
 var cors = require('cors');
 var User = require('./Users');
+var Games = require('./Games');
+var Players = require('./Players');
+var PlayerSeasons = require('./PlayerSeasons');
+const spawn = require("child_process").spawn;
 
 
 var app = express();
@@ -73,22 +77,36 @@ router.post('/signin', function (req, res) {
 router.route('/players')
     .get( (req,res) => {
         console.log("GET PLAYERS request received.");
-        Players.find( function(err,players){
-            if(err){
-                res.send(err);
-            } else {
+        Players.find().then(players => {
                 res.json(players);
-            }
         });
     })
     .post(authJwtController.isAuthenticated, (req, res) =>{
-
-    })
-    .put(authJwtController.isAuthenticated, (req,res) => {
-
+        // Update Players
+        console.log("POST PLAYERS request received.");
+        if(!req.query.gameId) {
+            res.status(400).send({ message: "Requires a game ID to update players by." });
+        } else {
+            console.log(req.query.gameId);
+            spawn('python', [".\\pyscripts\\dbhandler.py", "updatePlayers", req.query.gameId]);
+            res.status(200).send({ message: "Update request recieved. Process may take a few minutes to update results to server." });
+        }
     })
     .delete(authJwtController.isAuthenticated, (req,res) =>{
-
+        console.log("DELETE PLAYER request received.");
+        if(!req.query.playerId) {
+            res.status(400).send({ message: "Please specify a player to delete." });
+        } else {
+            Players.deleteOne( { playerId: req.query.playerId }, function(err){
+                if (err) {
+                    console.log("Failed to delete Player.");
+                    res.json(err);
+                } else {
+                    console.log("Player deleted.");
+                    res.json({success: true, msg: "Successfully deleted player."});
+                }
+            });
+        }
     })
     .all( (req,res) => {
         // Any other HTTP Method
@@ -99,23 +117,27 @@ router.route('/players')
 router.route('/players/:playerId')
     .get( (req,res) => {
         console.log("GET PLAYERS request received.");
-        const { id } = req.params;
-        Players.findOne({ playerId: id }, function(err,player){
+        const { playerId } = req.params;
+        Players.findOne({ playerId: playerId }, function(err,player){
             if(err){
                 res.send(err);
             } else {
+                console.log(player);
                 res.json(player);
             }
         });
     })
-    .post(authJwtController.isAuthenticated, (req, res) =>{
-
-    })
-    .put(authJwtController.isAuthenticated, (req,res) => {
-
-    })
     .delete(authJwtController.isAuthenticated, (req,res) =>{
-
+        const { playerId } = req.params;
+        Players.deleteOne({ playerId: playerId }, function(err){
+            if (err) {
+                console.log("Failed to delete player.");
+                res.json(err);
+            } else {
+                console.log("Player deleted.");
+                res.json({success: true, msg: "Successfully deleted player."});
+            }
+        });
     })
     .all( (req,res) => {
         // Any other HTTP Method
@@ -130,22 +152,36 @@ router.route('/players/:playerId')
 router.route('/games')
     .get( (req,res) => {
         console.log("GET GAMES request received.");
-        Games.find( function(err,games){
-            if(err){
-                res.send(err);
-            } else {
-                res.json(games);
-            }
+        Games.find().then( games => {
+            res.json(games);
         });
     })
     .post(authJwtController.isAuthenticated, (req, res) =>{
-
-    })
-    .put(authJwtController.isAuthenticated, (req,res) => {
-
+        console.log("POST GAME request recieved.");
+        if(!req.query.gameId){
+            console.log("Update failed: Missing game specification.");
+            res.json({success: false, msg: "Please specify a game to update."});
+        } else {
+            spawn('python', [".\\pyscripts\\dbhandler.py", "updateGame", req.query.gameId]);
+            res.json({success: true, msg: "Successfully updating game. Process may take a few minutes to complete."});
+        }
     })
     .delete(authJwtController.isAuthenticated, (req,res) =>{
-
+        console.log("DELETE GAME request received.");
+        if (!req.query.gameId) {
+            console.log("DELETE failed: Missing game specification.");
+            res.json({success: false, msg: "Please specify a game to delete."});
+        } else {
+            Games.deleteOne({ id : req.query.gameId}, function(err){
+                if (err) {
+                    console.log("Failed to delete game.");
+                    res.json(err);
+                } else {
+                    console.log("Game deleted.");
+                    res.json({success: true, msg: "Successfully deleted game."});
+                }
+            });
+        }
     })
     .all( (req,res) => {
         // Any other HTTP Method
@@ -167,13 +203,25 @@ router.route('/games/:gameId')
         });
     })
     .post(authJwtController.isAuthenticated, (req, res) =>{
+        console.log("POST GAMES request received.");
+        const { gameId } = req.params;
 
-    })
-    .put(authJwtController.isAuthenticated, (req,res) => {
-
+        spawn('python', [".\\pyscripts\\dbhandler.py", "updateGame", gameId]);
+        res.json({success: true, msg: "Successfully updating game. Process may take a few minutes to complete."});   
     })
     .delete(authJwtController.isAuthenticated, (req,res) =>{
+        console.log("DELETE GAME request received.");
+        const { gameId } = req.params;
 
+        Games.deleteOne({ id: gameId }, function(err){
+            if (err){
+                console.log("Failed to delete game.");
+                res.json(err);
+            } else {
+                console.log("Game deleted.");
+                res.json({success: true, msg: "Successfully deleted game."});
+            }
+        });
     })
     .all( (req,res) => {
         // Any other HTTP Method
@@ -197,13 +245,14 @@ router.route('/playerSeasons')
         });
     })
     .post(authJwtController.isAuthenticated, (req, res) =>{
-
-    })
-    .put(authJwtController.isAuthenticated, (req,res) => {
-
-    })
-    .delete(authJwtController.isAuthenticated, (req,res) =>{
-
+        console.log("POST PLAYER SEASONS request received.");
+        if (!req.query.year){
+            console.log("Update player seasons failed: Missing year specification.");
+            res.status(400).send({success: false, msg: "Please specify year."});
+        } else {
+            spawn('python', [".\\pyscripts\\dbhandler.py", "updateSeason", req.query.year]);
+            res.json({success: true, msg: "Successfully updating player seasons. May take a long time to process."});
+        }
     })
     .all( (req,res) => {
         // Any other HTTP Method
@@ -214,9 +263,9 @@ router.route('/playerSeasons')
 router.route('/playerSeasons/:playerId')
     .get( (req,res) => {
         console.log("GET PLAYER SEASONS request received.");
-        const{ id } = req.params;
+        const{ playerId } = req.params;
 
-        PlayerSeasons.find( { playerId: id }, function(err,playerSeasons){
+        PlayerSeasons.find( { playerId: playerId }, function(err,playerSeasons){
             if(err){
                 res.send(err);
             } else {
@@ -224,17 +273,31 @@ router.route('/playerSeasons/:playerId')
             }
         });
     })
-    .post(authJwtController.isAuthenticated, (req, res) =>{
-
-    })
-    .put(authJwtController.isAuthenticated, (req,res) => {
-
-    })
     .delete(authJwtController.isAuthenticated, (req,res) =>{
-
+        console.log("DELETE PLAYER SEASON request received.");
+        const { playerId } = req.params;
+        if (!req.query.year) {
+            console.log("Delete failed: Year not specified.");
+            res.status(400).send({message: "Please specify a year."});
+        } else {
+            PlayerSeasons.deleteOne({playerId: playerId, year: req.query.year}, function(err){
+                if (err){
+                    console.log("Failed to delete Player Season.");
+                    res.json(err);
+                } else {
+                    console.log("Player Season deleted.");
+                    res.json({success: true, msg: "Successfully deleted player season."});
+                }
+            });
+        }
     })
     .all( (req,res) => {
         // Any other HTTP Method
         // Returns a message stating that the HTTP method is unsupported.
         res.status(405).send({ message: 'HTTP method not supported.' });        
     });
+
+
+app.use('/', router);
+app.listen(process.env.PORT || 8080);
+module.exports = app;

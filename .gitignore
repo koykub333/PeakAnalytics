@@ -5,4 +5,4 @@ exampleGameShifts.json
 exampleGameData.json
 pyscripts/__pycache__
 env
-package-lock.json
+node_modules
